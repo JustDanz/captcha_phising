@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operator Dashboard</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dashboard-body">
+  <div class="lab-banner">AUTHORIZED SECURITY AWARENESS LAB</div>
+  <h1 class="dash-title">Operator Dashboard — CAPTCHA Demo</h1>
+  <p class="dash-sub">Auto-refreshes every 3 seconds. Data shown here is local-lab only.</p>
+
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th>Session</th>
+        <th>Created</th>
+        <th>IP</th>
+        <th>Status</th>
+        <th>Camera</th>
+        <th>Location</th>
+        <th>Lat / Long</th>
+        <th>Captcha</th>
+      </tr>
+    </thead>
+    <tbody id="sessions-body">
+      <tr><td colspan="8">Waiting for sessions...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    async function refresh() {
+      try {
+        const res = await fetch('/api/data');
+        if (!res.ok) throw new Error('Network error');
+        const s = await res.json();
+        const body = document.getElementById('sessions-body');
+        if (!s || !s.session_id) {
+          body.innerHTML = '<tr><td colspan="8">No active session.</td></tr>';
+          return;
+        }
+        const loc = s.location || {};
+        const hasLoc = loc.latitude != null && loc.longitude != null;
+        body.innerHTML = `
+          <tr>
+            <td>${s.session_id}</td>
+            <td>${new Date(s.created_at).toLocaleString()}</td>
+            <td>${s.ip}</td>
+            <td>${s.status || 'INITIALIZED'}</td>
+            <td>${s.camera_permission || 'PENDING'}</td>
+            <td>${s.location_permission || 'PENDING'}</td>
+            <td>${hasLoc ? loc.latitude.toFixed(5) + ', ' + loc.longitude.toFixed(5) : '-'}</td>
+            <td>${s.captcha_verified ? '✅' : '❌'}</td>
+          </tr>
+        `;
+      } catch (e) {
+        console.error('Dashboard refresh failed', e);
+      }
+    }
+    refresh();
+    setInterval(refresh, 3000);
+  </script>
+</body>
+</html>

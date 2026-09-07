@@ -1,0 +1,144 @@
+* { box-sizing: border-box; }
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f0f2f5;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.lab-banner {
+  width: 100%;
+  background: #b91c1c;
+  color: #fff;
+  text-align: center;
+  padding: 8px 4px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.captcha-box {
+  margin-top: 80px;
+  background: #fff;
+  border: 1px solid #d3d3d3;
+  border-radius: 4px;
+  padding: 30px 40px;
+  width: 320px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.captcha-box h1 {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.captcha-box p {
+  color: #555;
+  font-size: 14px;
+}
+
+.captcha-btn {
+  margin-top: 20px;
+  background: #fff;
+  border: 1px solid #d3d3d3;
+  border-radius: 3px;
+  padding: 12px 18px;
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.captcha-btn:hover {
+  background: #f7f7f7;
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #999;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.hidden { display: none !important; }
+
+#preview {
+  width: 100%;
+  max-width: 280px;
+  border-radius: 4px;
+  margin-top: 12px;
+}
+
+.status-text {
+  font-size: 13px;
+  color: #777;
+  margin-top: 10px;
+}
+
+.success-text {
+  color: #128a29;
+  font-weight: bold;
+}
+
+.info-text {
+  font-size: 13px;
+  color: #444;
+}
+
+.disclaimer {
+  max-width: 420px;
+  font-size: 12px;
+  color: #888;
+  text-align: center;
+  margin: 30px 16px;
+}
+
+/* Dashboard */
+.dashboard-body {
+  align-items: stretch;
+  padding: 20px;
+}
+
+.dash-title {
+  text-align: center;
+}
+
+.dash-sub {
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+}
+
+.dash-table {
+  width: 100%;
+  max-width: 1100px;
+  margin: 20px auto;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.dash-table th, .dash-table td {
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.dash-table th {
+  background: #222;
+  color: #fff;
+}
+
+.thumb {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 3px;
+}
